@@ -10,7 +10,6 @@
   "files": [
     "./dist/*"
   ],
-  "private": true,
   "scripts": {
     "dev": "bun build ./src/*.ts --outdir ./dist --splitting --target node --watch",
     "build": "bun build ./src/*.ts --outdir ./dist --splitting --target node"
