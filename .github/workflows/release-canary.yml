@@ -2,8 +2,9 @@ name: canary
 
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch: {}
+    branches:
+      - main
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -49,7 +50,7 @@ jobs:
           SHORT_SHA="${GITHUB_SHA::7}"
           RUN="${GITHUB_RUN_NUMBER}"
 
-#          CANARY_VER="${BASE}-canary.${RUN}.sha${SHORT_SHA}"
+          # CANARY_VER="${BASE}-canary.${RUN}.sha${SHORT_SHA}"
           CANARY_VER="${BASE}-sha${SHORT_SHA}"
 
           echo "Will publish version: ${CANARY_VER}"
