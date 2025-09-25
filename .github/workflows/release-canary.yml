@@ -1,0 +1,67 @@
+name: canary
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish-canary:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 'latest'
+
+      - name: Use Node (for npm publish)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install deps
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        run: |
+          if jq -e '.scripts.build' package.json >/dev/null; then
+            bun run build
+          else
+            echo "No build script found, skipping"
+          fi
+
+      - name: Derive canary version and update package.json
+        id: ver
+        shell: bash
+        run: |
+          BASE=$(jq -r '.version' package.json)
+          BASE="${BASE%%-*}"
+
+          SHORT_SHA="${GITHUB_SHA::7}"
+          RUN="${GITHUB_RUN_NUMBER}"
+
+#          CANARY_VER="${BASE}-canary.${RUN}.sha${SHORT_SHA}"
+          CANARY_VER="${BASE}-sha${SHORT_SHA}"
+
+          echo "Will publish version: ${CANARY_VER}"
+
+          tmp=$(mktemp)
+          jq --arg v "$CANARY_VER" '.version = $v' package.json > "$tmp" && mv "$tmp" package.json
+
+          echo "version=${CANARY_VER}" >> "$GITHUB_OUTPUT"
+
+          npm pack --dry-run
+
+      - name: Publish to npm (canary tag)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --access public --tag canary
