@@ -56,7 +56,7 @@ export function header(title: string) {
 }
 
 export function footer(
-  message = "Problems? https://github.com/shvorak/finger-git/issues",
+  message = "Problems? https://github.com/shvorak/git-skipper/issues",
 ) {
   outro(message);
 }
