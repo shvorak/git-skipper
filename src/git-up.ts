@@ -3,7 +3,10 @@
 import { log, text } from "@clack/prompts";
 import { program } from "commander";
 import { getInformation, git } from "./utils/git";
+import { extractIssueKey } from "./utils/helpers";
 import { exitOnCancel, footer, header, task } from "./utils/shell";
+
+const PREFIX = "NOTICKET";
 
 program
   .name("git up")
@@ -49,9 +52,11 @@ program
         status.tracking !== `${info.remote}/${info.branch}`;
 
       if (requireMessage) {
-        message = await text({ message: "Enter commit message" }).then(
-          exitOnCancel,
-        );
+        const prefix = extractIssueKey(info.branch) || PREFIX;
+        message = await text({
+          message: "Enter commit message",
+          initialValue: `${prefix}. `,
+        }).then(exitOnCancel);
       }
 
       await task({
