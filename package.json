@@ -7,6 +7,9 @@
     "git-start": "./dist/git-start.js",
     "git-recent": "./dist/git-recent.js"
   },
+  "repository": {
+    "url": "https://github.com/shvorak/git-skipper"
+  },
   "files": [
     "./dist/*"
   ],
