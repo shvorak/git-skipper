@@ -40,6 +40,10 @@ jobs:
             echo "No build script found, skipping"
           fi
 
+      - name: Publish dry-run
+        run: |
+          npm publish --dry-run
+
       - name: Ensure tag matches package.json version
         run: |
           PKG_VERSION=$(jq -r .version package.json)
