@@ -3,7 +3,8 @@ import simpleGit from "simple-git";
 export const git = simpleGit();
 
 export async function getBranchPrefix() {
-  const prefix = await git.getConfig("nebo.prefix");
+  const prefix = await git.getConfig("skipper.prefix");
+
   return prefix.value || "";
 }
 
@@ -27,8 +28,9 @@ export async function getBranchDivergence(base: string, head = "HEAD") {
 
 export async function getInformation() {
   const remotes = await git.getRemotes();
+  // TODO: Check remotes and store result in config
   const remote = remotes[0]!.name;
-  const target = (await git.getConfig("nebo.target")).value || "trunk";
+  const target = (await git.getConfig("skipper.target")).value || "trunk";
   const branches = await git.branchLocal();
   const branch = branches.current;
 

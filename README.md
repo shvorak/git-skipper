@@ -1,4 +1,4 @@
-# git-buddy 🤝
+# git-skipper 🫡
 
 A set of friendly Git shortcuts to speed up your daily workflow.  
 No more typing long commands — just simple helpers for common tasks.
@@ -6,9 +6,19 @@ No more typing long commands — just simple helpers for common tasks.
 ## Installation
 
 ```bash
-bun add -g git-buddy
+bun add -g git-skipper
 # or
-npm install -g git-buddy
+npm install -g git-skipper
+```
+
+## Configuration
+
+```bash
+# Set prefix for branch name
+git config set skipper.prefix users/$USER/
+
+# Set base branch
+git config set skipper.target trunk
 ```
 
 Make sure your $PATH includes the global bin directory (for Bun this is usually ~/.bun/bin).
