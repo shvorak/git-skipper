@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import { isCancel, log, text } from "@clack/prompts";
 
@@ -27,9 +27,6 @@ program
     validateBranchName(value) === undefined ? value : undefined,
   )
   .action(async (branchArg) => {
-    // Empty line
-    console.log();
-
     header("git start");
 
     await git.checkIsRepo();

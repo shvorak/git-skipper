@@ -1,12 +1,17 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import { log, text } from "@clack/prompts";
 import { program } from "commander";
+
 import { getInformation, git } from "./utils/git";
 import { extractIssueKey } from "./utils/helpers";
 import { exitOnCancel, footer, header, task } from "./utils/shell";
 
 const PREFIX = "NOTICKET";
+
+type Arguments = {
+  amend?: boolean;
+};
 
 program
   .name("git up")
@@ -15,9 +20,8 @@ program
   )
   .option("--ready", "Publish merge request")
   .option("--merge", "Setting auto merge for merge request")
-  .action(async () => {
-    console.log();
-
+  .option("--amend", "Amend tracked changes and put them to last commit")
+  .action(async (args: Arguments) => {
     header("git up");
 
     await git.checkIsRepo();
@@ -62,10 +66,14 @@ program
       await task({
         title: "Commit changes",
         handler: async ({ step }) => {
+          const options = [args.amend && "--amend"].filter(
+            (v) => typeof v === "string",
+          );
+
           step("Adding changes");
           await git.add("./*");
           step("Commit changes");
-          await git.commit(message);
+          await git.commit(message, options);
         },
       });
     }

@@ -52,6 +52,8 @@ export function exitOnCancel(value: string | symbol): string {
 }
 
 export function header(title: string) {
+  // Empty line
+  console.log();
   intro(color.bgMagenta(color.black(` ${title} `)));
 }
 

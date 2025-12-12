@@ -1,8 +1,7 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import { log, select } from "@clack/prompts";
 import { program } from "commander";
-import { GitError } from "simple-git";
 import { getInformation, git } from "./utils/git";
 import { exitOnCancel, footer, header, task } from "./utils/shell";
 
@@ -18,9 +17,6 @@ program
     10,
   )
   .action(async ({ count = 10 }) => {
-    // Empty line
-    console.log();
-
     header("git recent");
 
     await git.checkIsRepo();
