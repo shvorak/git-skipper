@@ -63,3 +63,22 @@ Select one and you will be switched immediately.
 Requirements
 - Git installed and accessible in $PATH
 - Node.js/Bun runtime (if installed via npm/bun)
+
+## Releases
+
+Both release channels use the `.github/workflows/release.yml` workflow:
+
+- Every push to `main` publishes a unique prerelease under the `canary` npm tag.
+- A tag such as `v1.2.3` publishes the matching `package.json` version under the
+  default `latest` npm tag.
+- A manual workflow run can publish either channel. A manual public release uses
+  the version currently stored in `package.json`.
+
+Publishing uses npm Trusted Publishing instead of an npm access token. Configure
+the `git-skipper` package on npm with this GitHub Actions publisher:
+
+- Organization or user: `shvorak`
+- Repository: `git-skipper`
+- Workflow filename: `release.yml`
+
+The workflow requires no `NPM_TOKEN` secret.
