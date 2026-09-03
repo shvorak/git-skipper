@@ -3,7 +3,7 @@
 import { log, text } from "@clack/prompts";
 import { program } from "commander";
 
-import { getInformation, git } from "./utils/git";
+import { getInformation, git, hasChangesComparedTo } from "./utils/git";
 import { extractIssueKey } from "./utils/helpers";
 import { exitOnCancel, footer, header, task } from "./utils/shell";
 
@@ -88,6 +88,25 @@ program
         await git.pull(info.remote, info.target, ["--rebase"]);
       },
     });
+
+    const hasBranchChanges = await task({
+      title: "Compare with base branch",
+      handler: async ({ result }) => {
+        const base = `${info.remote}/${info.target}`;
+        const hasChanges = await hasChangesComparedTo(base);
+
+        if (!hasChanges) {
+          result(`No changes compared to ${base}`);
+        }
+
+        return hasChanges;
+      },
+    });
+
+    if (!hasBranchChanges) {
+      footer();
+      return;
+    }
 
     const mergeRequestUrl = await task({
       title: "Push changes",
