@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { isCancel, log, text } from "@clack/prompts";
+import { isCancel, log, select, text } from "@clack/prompts";
 
 import { program } from "commander";
 import {
@@ -32,11 +32,13 @@ program
     await git.checkIsRepo();
 
     const prefix = await getBranchPrefix();
-    const branch = await requireBranch(branchArg, prefix);
+    const requestedBranch = await requireBranch(branchArg, prefix);
 
-    if (isCancel(branch)) {
+    if (isCancel(requestedBranch)) {
       process.exit(0);
     }
+
+    let branch: string = requestedBranch;
 
     const { remote, target } = await getInformation();
 
@@ -48,6 +50,44 @@ program
         result("✔ done");
       },
     });
+
+    const existingBranch = await findExistingBranch(branch, remote);
+
+    if (existingBranch) {
+      const action = await select({
+        message: `Branch ${branch} already exists`,
+        options: [
+          { value: "switch", label: "Switch to existing branch" },
+          { value: "suffix", label: "Create a new branch with a suffix" },
+        ],
+      });
+
+      if (isCancel(action)) {
+        process.exit(0);
+      }
+
+      if (action === "switch") {
+        await task({
+          title: "Switch branch",
+          handler: async ({ step, result }) => {
+            step(`Switch to branch ${branch}`);
+
+            if (existingBranch === "local") {
+              await git.checkout(branch);
+            } else {
+              await git.checkoutBranch(branch, `${remote}/${branch}`);
+            }
+
+            result(`✔ switched to ${branch}`);
+          },
+        });
+
+        footer();
+        return;
+      }
+
+      branch = await requireAvailableBranchWithSuffix(branch, remote);
+    }
 
     await task({
       title: "Create branch",
@@ -81,4 +121,52 @@ async function requireBranch(branchArg: unknown, prefix: string) {
     initialValue: prefix,
     validate: validateBranchName,
   });
+}
+
+async function findExistingBranch(branch: string, remote: string) {
+  const localBranches = await git.branchLocal();
+  if (localBranches.all.includes(branch)) {
+    return "local" as const;
+  }
+
+  const remoteBranches = await git.branch([
+    "--remotes",
+    "--list",
+    `${remote}/${branch}`,
+  ]);
+  if (remoteBranches.all.includes(`${remote}/${branch}`)) {
+    return "remote" as const;
+  }
+
+  return undefined;
+}
+
+async function requireAvailableBranchWithSuffix(
+  branch: string,
+  remote: string,
+) {
+  while (true) {
+    const suffix = await text({
+      message: "Enter branch suffix",
+      placeholder: "2",
+      validate: (value) => {
+        if (!value) {
+          return "Suffix is required";
+        }
+
+        return validateBranchName(`${branch}-${value}`);
+      },
+    });
+
+    if (isCancel(suffix)) {
+      process.exit(0);
+    }
+
+    const newBranch = `${branch}-${suffix}`;
+    if (!(await findExistingBranch(newBranch, remote))) {
+      return newBranch;
+    }
+
+    log.warn(`Branch ${newBranch} already exists`);
+  }
 }
