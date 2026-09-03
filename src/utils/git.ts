@@ -26,6 +26,12 @@ export async function getBranchDivergence(base: string, head = "HEAD") {
   } as const;
 }
 
+export async function hasChangesComparedTo(base: string, head = "HEAD") {
+  const changedFiles = await git.diff(["--name-only", `${base}...${head}`]);
+
+  return changedFiles.trim().length > 0;
+}
+
 export async function getInformation() {
   const remotes = await git.getRemotes();
   // TODO: Check remotes and store result in config
