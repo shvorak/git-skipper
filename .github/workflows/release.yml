@@ -2,68 +2,96 @@ name: release
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*.*.*'
   workflow_dispatch:
+    inputs:
+      channel:
+        description: Release channel
+        required: true
+        default: canary
+        type: choice
+        options:
+          - canary
+          - public
 
 permissions:
   contents: read
   id-token: write
 
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
 jobs:
   publish:
     runs-on: ubuntu-latest
+    env:
+      CHANNEL: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && 'public' || github.event_name == 'workflow_dispatch' && inputs.channel || 'canary' }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Use Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: 'latest'
 
-      - name: Use Node (for npm publish)
-        uses: actions/setup-node@v4
+      - name: Use Node
+        uses: actions/setup-node@v5
         with:
-          node-version: '22'
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Install deps (bun)
+      - name: Update npm for trusted publishing
+        run: npm install --global npm@latest
+
+      - name: Install dependencies
         run: bun install --frozen-lockfile
 
       - name: Build
-        run: |
-          if jq -e '.scripts.build' package.json >/dev/null; then
-            bun run build
-          else
-            echo "No build script found, skipping"
-          fi
+        run: bun run build
 
-      - name: Publish dry-run
-        run: |
-          npm publish --dry-run
+      - name: Type check
+        run: bunx tsc --noEmit
 
-      - name: Ensure tag matches package.json version
+      - name: Prepare version
+        id: version
+        shell: bash
         run: |
           PKG_VERSION=$(jq -r .version package.json)
-          TAG_VERSION=${GITHUB_REF#refs/tags/}
-          TAG_VERSION=${TAG_VERSION#v}
-          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
-            echo "package.json version ($PKG_VERSION) != git tag ($TAG_VERSION)"
-            exit 1
-          fi
 
-      - name: Check bin entries
-        run: |
-          if jq -e '.bin' package.json >/dev/null; then
-            echo "bin entries present"; jq .bin package.json
+          if [ "$CHANNEL" = "canary" ]; then
+            BASE_VERSION="${PKG_VERSION%%-*}"
+            SHORT_SHA="${GITHUB_SHA::7}"
+            PUBLISH_VERSION="${BASE_VERSION}-canary.${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}.sha${SHORT_SHA}"
+            npm pkg set "version=${PUBLISH_VERSION}"
           else
-            echo "No bin field, proceeding"
+            PUBLISH_VERSION="$PKG_VERSION"
+
+            if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+              TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+              if [ "$PUBLISH_VERSION" != "$TAG_VERSION" ]; then
+                echo "package.json version ($PUBLISH_VERSION) does not match tag ($TAG_VERSION)"
+                exit 1
+              fi
+            fi
           fi
 
-      - name: Publish to npm (with provenance)
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          echo "Publishing git-skipper@${PUBLISH_VERSION} to the ${CHANNEL} channel"
+          echo "version=${PUBLISH_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify package contents
+        run: npm pack --dry-run
+
+      - name: Publish to npm
+        shell: bash
         run: |
-          npm publish --provenance --access public
+          if [ "$CHANNEL" = "canary" ]; then
+            npm publish --provenance --access public --tag canary
+          else
+            npm publish --provenance --access public
+          fi
